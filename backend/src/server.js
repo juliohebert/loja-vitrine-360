@@ -44,10 +44,12 @@ const corsOptions = {
     const allowedOrigins = [
       'http://localhost:3000',
       'http://localhost:3002',
+      'http://localhost:3003',
       'http://localhost:5173',
       'http://192.168.0.14:5173',
       'http://192.168.0.14:3000',
       'http://192.168.0.14:3002',
+      'http://192.168.0.14:3003',
       'https://loja-seven-theta.vercel.app',
       process.env.CORS_ORIGIN
     ].filter(Boolean);

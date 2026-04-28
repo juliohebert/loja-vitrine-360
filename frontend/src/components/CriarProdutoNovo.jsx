@@ -361,6 +361,20 @@ export default function CriarProdutoNovo() {
     try {
       setCarregando(true);
 
+      // Se não há variações, criar uma padrão
+      const variacoesParaEnviar = variacoes.length > 0 
+        ? variacoes.map(v => ({
+            tamanho: v.tamanho,
+            cor: v.cor,
+            quantidade: parseInt(v.estoque) || 0,
+            precoVariacao: v.precoVariacao ? converterParaNumero(v.precoVariacao) : null
+          }))
+        : [{
+            tamanho: 'Único',
+            cor: 'Padrão',
+            quantidade: controleEstoque.quantidade || 0
+          }];
+
       const produtoData = {
         nome: formData.nome?.trim(),
         marca: formData.marca?.trim() || 'Sem marca',
@@ -378,12 +392,7 @@ export default function CriarProdutoNovo() {
         quantidade: controleEstoque.quantidade,
         estoqueMinimo: controleEstoque.estoqueMinimo,
         imagens: imagens,
-        variacoes: variacoes.map(v => ({
-          tamanho: v.tamanho,
-          cor: v.cor,
-          quantidade: parseInt(v.estoque) || 0,
-          precoVariacao: v.precoVariacao ? converterParaNumero(v.precoVariacao) : null
-        }))
+        variacoes: variacoesParaEnviar
       };
 
       console.log('📦 Dados sendo enviados:', produtoData);
@@ -469,7 +478,7 @@ export default function CriarProdutoNovo() {
             label: 'Ver Produtos',
             onClick: () => {
               setModalSucesso({ isOpen: false, mensagem: '', acoes: false });
-              navigate('/dashboard');
+              navigate('/estoque');
             },
             primary: true
           }

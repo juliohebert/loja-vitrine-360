@@ -344,6 +344,22 @@ const CriarProduto = () => {
     try {
       const token = localStorage.getItem('token');
       
+      // Se não há variações, criar uma padrão
+      const variacoesParaEnviar = variacoes.length > 0 
+        ? variacoes.map(v => ({
+            tamanho: v.tamanho,
+            cor: v.cor,
+            quantidade: v.estoque,
+            limiteMinimo: v.limiteMinimo || 10,
+            sku: formData.skuBase ? `${formData.skuBase}-${v.tamanho}-${v.cor}` : undefined
+          }))
+        : [{
+            tamanho: 'Único',
+            cor: 'Padrão',
+            quantidade: 0,
+            limiteMinimo: 10
+          }];
+      
       // Preparar dados para envio
       const produtoData = {
         nome: formData.nome,
@@ -354,13 +370,7 @@ const CriarProduto = () => {
         precoVenda: parseFloat(formData.precoVenda.replace(/[^\d,]/g, '').replace(',', '.')) || 0,
         exibir_catalogo: formData.exibir_catalogo,
         imagens: imagens,
-        variacoes: variacoes.map(v => ({
-          tamanho: v.tamanho,
-          cor: v.cor,
-          quantidade: v.estoque,
-          limiteMinimo: v.limiteMinimo || 10,
-          sku: formData.skuBase ? `${formData.skuBase}-${v.tamanho}-${v.cor}` : undefined
-        }))
+        variacoes: variacoesParaEnviar
       };
 
       const url = modoEdicao 
