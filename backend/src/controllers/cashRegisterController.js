@@ -33,9 +33,18 @@ exports.openCashRegister = async (req, res) => {
       observacoes
     });
 
+    // Buscar o caixa criado com o relacionamento do usuário
+    const caixaComUsuario = await CashRegister.findByPk(novoCaixa.id, {
+      include: [{
+        model: User,
+        as: 'usuario',
+        attributes: ['id', 'nome', 'email']
+      }]
+    });
+
     res.status(201).json({
       message: 'Caixa aberto com sucesso',
-      data: novoCaixa
+      data: caixaComUsuario
     });
   } catch (error) {
     console.error('Erro ao abrir caixa:', error);
@@ -105,6 +114,11 @@ exports.getOpenCashRegister = async (req, res) => {
         status: 'aberto',
         tenant_id: req.tenantId // Usar nome do campo no banco: tenant_id
       },
+      include: [{
+        model: User,
+        as: 'usuario',
+        attributes: ['id', 'nome', 'email']
+      }],
       order: [['dataAbertura', 'DESC']]
     });
 

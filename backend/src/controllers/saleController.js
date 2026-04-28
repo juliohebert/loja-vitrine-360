@@ -31,12 +31,23 @@ const getAllSales = async (req, res) => {
       numero: s.numeroVenda,
       total: s.total,
       data: s.data,
-      dataHora: s.dataHora
+      dataHora: s.dataHora,
+      criadoEm: s.criadoEm
     })), null, 2));
+
+    // Garantir que o campo criadoEm seja enviado corretamente
+    const salesData = sales.map(sale => {
+      const saleJson = sale.toJSON();
+      // Adicionar explicitamente o campo criadoEm se não existir
+      if (!saleJson.criadoEm && saleJson.criado_em) {
+        saleJson.criadoEm = saleJson.criado_em;
+      }
+      return saleJson;
+    });
 
     res.json({
       success: true,
-      data: sales
+      data: salesData
     });
   } catch (error) {
     console.error('❌ [GET ALL SALES] Erro ao buscar vendas:', error);

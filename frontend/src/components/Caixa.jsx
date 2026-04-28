@@ -5,7 +5,7 @@ const formatarPreco = (valor) => {
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAuthHeaders } from '../utils/auth';
-import { FaCashRegister, FaLock, FaUnlock, FaHistory, FaPlus, FaMinus } from 'react-icons/fa';
+import { FaCashRegister, FaLock, FaUnlock, FaHistory, FaPlus, FaMinus, FaListAlt } from 'react-icons/fa';
 import Sidebar from './Sidebar';
 import ModalConfirmacao from './ModalConfirmacao';
 import Toast from './Toast';
@@ -69,9 +69,10 @@ export default function Caixa() {
       
       const vendasDoCaixaAtual = vendas.filter(venda => {
         // Filtrar vendas que foram criadas após abertura do caixa
-        const dataVenda = new Date(venda.criadoEm || venda.data);
+        // Tentar múltiplos campos de data para garantir compatibilidade
+        const dataVenda = new Date(venda.criadoEm || venda.criado_em || venda.dataHora || venda.data);
         const resultado = dataVenda >= dataHoraAbertura;
-        console.log(`  Venda: ${dataVenda.toISOString()} >= ${dataHoraAbertura.toISOString()}? ${resultado}`);
+        console.log(`  Venda #${venda.numeroVenda}: ${dataVenda.toISOString()} >= ${dataHoraAbertura.toISOString()}? ${resultado}`);
         return resultado;
       });
 
@@ -117,7 +118,8 @@ export default function Caixa() {
       const dataHoraAbertura = new Date(caixaAberto.dataAbertura);
       
       const vendasDoCaixaAtual = vendas.filter(venda => {
-        const dataVenda = new Date(venda.criadoEm || venda.data);
+        // Tentar múltiplos campos de data para garantir compatibilidade
+        const dataVenda = new Date(venda.criadoEm || venda.criado_em || venda.dataHora || venda.data);
         return dataVenda >= dataHoraAbertura;
       });
 
@@ -150,9 +152,10 @@ export default function Caixa() {
       
       // Filtrar vendas do período do caixa
       const vendasDoCaixa = vendas.filter(venda => {
-        const dataVenda = new Date(venda.criadoEm || venda.data);
+        // Tentar múltiplos campos de data para garantir compatibilidade
+        const dataVenda = new Date(venda.criadoEm || venda.criado_em || venda.dataHora || venda.data);
         const resultado = dataVenda >= dataAbertura && dataVenda <= dataFechamento;
-        console.log(`  Venda ${dataVenda.toISOString()}: ${resultado ? '✅' : '❌'}`);
+        console.log(`  Venda #${venda.numeroVenda} ${dataVenda.toISOString()}: ${resultado ? '✅' : '❌'}`);
         return resultado;
       });
 
@@ -334,14 +337,47 @@ export default function Caixa() {
                   <p className="text-2xl font-bold text-green-600">{formatarValor(caixaAberto.saldoInicial)}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Vendas do Caixa:</p>
-                  <button
-                    onClick={abrirModalVendas}
-                    className="text-xl font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer transition-colors text-left"
-                  >
-                    {formatarValor(vendasDoCaixa.total)} 
-                    <span className="text-sm text-gray-500 ml-2">({vendasDoCaixa.quantidade} vendas)</span>
-                  </button>
+                  <p className="text-sm text-gray-600 mb-1">Vendas do Caixa:</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1">
+                      <p className="text-xl font-bold text-blue-600">
+                        {formatarValor(vendasDoCaixa.total)}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {vendasDoCaixa.quantidade} venda{vendasDoCaixa.quantidade !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    <button
+                      onClick={abrirModalVendas}
+                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 text-sm font-medium"
+                    >
+                      <FaListAlt /> Ver Detalhes
+                    </button>
+                  </div>
+                  
+                  {/* Resumo por forma de pagamento */}
+                  {Object.keys(resumoPagamentos).length > 0 && (
+                    <div className="mt-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                      <p className="text-xs font-semibold text-blue-900 mb-2 flex items-center gap-1">
+                        💳 Recebimentos
+                      </p>
+                      <div className="space-y-2">
+                        {Object.entries(resumoPagamentos).map(([forma, dados]) => (
+                          <div key={forma} className="bg-white p-2 rounded border border-blue-100">
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-gray-600">{forma}</span>
+                              <span className="text-xs text-gray-500">
+                                {dados.quantidade} venda{dados.quantidade !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                            <p className="text-sm font-bold text-gray-900 mt-1">
+                              {formatarValor(dados.total)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="pt-2 border-t">
                   <p className="text-sm text-gray-600">Saldo Atual:</p>
@@ -670,8 +706,41 @@ export default function Caixa() {
                 </button>
               </div>
               <p className="text-gray-600 mt-2">
-                Total: {formatarValor(modalVendas.vendas.reduce((acc, v) => acc + parseFloat(v.valor), 0))} • {modalVendas.vendas.length} vendas
+                Total: {formatarValor(modalVendas.vendas.reduce((acc, v) => acc + parseFloat(v.total || 0), 0))} • {modalVendas.vendas.length} vendas
               </p>
+              
+              {/* Resumo por forma de pagamento no modal */}
+              {modalVendas.vendas.length > 0 && (() => {
+                const resumoModal = {};
+                modalVendas.vendas.forEach(venda => {
+                  const forma = venda.formaPagamento || 'Não informado';
+                  if (!resumoModal[forma]) {
+                    resumoModal[forma] = { quantidade: 0, total: 0 };
+                  }
+                  resumoModal[forma].quantidade++;
+                  resumoModal[forma].total += parseFloat(venda.total || 0);
+                });
+                return (
+                  <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                    <p className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                      💳 Recebimentos por Forma de Pagamento
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {Object.entries(resumoModal).map(([forma, dados]) => (
+                        <div key={forma} className="bg-white p-3 rounded-lg border border-blue-100 shadow-sm">
+                          <p className="text-xs text-gray-600 mb-1">{forma}</p>
+                          <p className="text-lg font-bold text-gray-900">
+                            {formatarValor(dados.total)}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {dados.quantidade} venda{dados.quantidade !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
             
             <div className="flex-1 overflow-y-auto p-6">
@@ -681,27 +750,30 @@ export default function Caixa() {
                     <div key={index} className="bg-gray-50 p-4 rounded-lg border hover:bg-gray-100 transition-colors">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <h3 className="font-semibold text-gray-800">{venda.descricao}</h3>
+                          <h3 className="font-semibold text-gray-800">Venda #{String(venda.numeroVenda).padStart(4, '0')}</h3>
                           <div className="mt-2 space-y-1 text-sm text-gray-600">
                             <p>
-                              <span className="font-medium">Data:</span> {new Date(venda.data + 'T00:00:00').toLocaleDateString('pt-BR')}
+                              <span className="font-medium">Data:</span> {new Date(venda.dataHora || venda.data).toLocaleString('pt-BR')}
                             </p>
-                            {venda.categoria && (
+                            <p>
+                              <span className="font-medium">Pagamento:</span> {venda.formaPagamento}
+                            </p>
+                            {venda.cliente?.nome && (
                               <p>
-                                <span className="font-medium">Categoria:</span> {venda.categoria}
+                                <span className="font-medium">Cliente:</span> {venda.cliente.nome}
                               </p>
                             )}
-                            {venda.cliente && (
+                            {venda.vendedor && (
                               <p>
-                                <span className="font-medium">Cliente:</span> {venda.cliente}
+                                <span className="font-medium">Vendedor:</span> {venda.vendedor}
                               </p>
                             )}
                           </div>
                         </div>
                         <div className="ml-4 text-right">
-                          <p className="text-xl font-bold text-green-600">{formatarValor(venda.valor)}</p>
+                          <p className="text-xl font-bold text-green-600">{formatarValor(venda.total)}</p>
                           <span className="inline-block mt-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                            {venda.status || 'Pago'}
+                            {venda.status === 'ativo' ? 'Ativa' : 'Cancelada'}
                           </span>
                         </div>
                       </div>
@@ -758,7 +830,7 @@ export default function Caixa() {
                 <div className="bg-white p-4 rounded-lg border">
                   <p className="text-sm text-gray-600">Total Vendas</p>
                   <p className="text-xl font-bold text-green-600">
-                    {formatarValor(modalDetalhesCaixa.vendas.reduce((acc, v) => acc + parseFloat(v.valor), 0))}
+                    {formatarValor(modalDetalhesCaixa.vendas.reduce((acc, v) => acc + parseFloat(v.total || 0), 0))}
                   </p>
                 </div>
                 <div className="bg-white p-4 rounded-lg border">
@@ -799,15 +871,7 @@ export default function Caixa() {
                   {/* Agrupar vendas por forma de pagamento */}
                   {Object.entries(
                     modalDetalhesCaixa.vendas.reduce((grupos, venda) => {
-                      let formaPagamento = venda.formaPagamento;
-                      
-                      // Extrair forma de pagamento das observações se não existir
-                      if (!formaPagamento && venda.observacoes) {
-                        const match = venda.observacoes.match(/Forma de pagamento:\s*([^|]+)/i);
-                        if (match) formaPagamento = match[1].trim();
-                      }
-                      
-                      if (!formaPagamento) formaPagamento = 'Não informado';
+                      const formaPagamento = venda.formaPagamento || 'Não informado';
                       
                       if (!grupos[formaPagamento]) {
                         grupos[formaPagamento] = [];
@@ -832,20 +896,30 @@ export default function Caixa() {
                           <div key={index} className="bg-gray-50 p-3 rounded-lg border hover:bg-gray-100 transition-colors">
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
-                                <h3 className="font-medium text-gray-800 text-sm">{venda.descricao}</h3>
+                                <h3 className="font-medium text-gray-800 text-sm">
+                                  Venda #{String(venda.numeroVenda).padStart(4, '0')}
+                                </h3>
                                 <div className="mt-1 space-y-0.5 text-xs text-gray-600">
                                   <p>
-                                    {new Date(venda.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                    {new Date(venda.dataHora || venda.data).toLocaleString('pt-BR')}
                                   </p>
-                                  {venda.observacoes && venda.observacoes.includes('Vendedor:') && (
+                                  {venda.vendedor && (
                                     <p className="text-xs">
-                                      {venda.observacoes.match(/Vendedor:\s*([^|]+)/)?.[1]?.trim()}
+                                      Vendedor: {venda.vendedor}
+                                    </p>
+                                  )}
+                                  {venda.cliente?.nome && (
+                                    <p className="text-xs">
+                                      Cliente: {venda.cliente.nome}
                                     </p>
                                   )}
                                 </div>
                               </div>
                               <div className="ml-4 text-right">
-                                <p className="text-lg font-bold text-green-600">{formatarValor(venda.valor)}</p>
+                                <p className="text-lg font-bold text-green-600">{formatarValor(venda.total || 0)}</p>
+                                <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
+                                  {venda.status === 'ativo' ? 'Ativa' : 'Cancelada'}
+                                </span>
                               </div>
                             </div>
                           </div>
