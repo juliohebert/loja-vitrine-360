@@ -162,7 +162,7 @@ export default function ForgotPassword() {
         {/* Footer */}
         <footer className="relative flex flex-col gap-4 px-5 py-8 text-center text-sm">
           <p className="text-[#616f89] dark:text-gray-400">
-            © Vitrine360 - 2025 Loja de Roupas. Todos os direitos reservados a 3TEC.
+            © Vitrine360 - 2026 Loja de Roupas. Todos os direitos reservados a Júlio Hebert.
           </p>
         </footer>
       </div>
