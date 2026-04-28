@@ -1,12 +1,27 @@
-import React from "react";
+import React, { useEffect } from "react";
 
 export default function ModalCadastroSucesso({ open, onClose }) {
+  useEffect(() => {
+    if (open) {
+      // Prevenir scroll quando modal está aberto
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Restaurar scroll quando modal é fechado
+      document.body.style.overflow = 'auto';
+    }
+    
+    return () => {
+      // Garantir que scroll seja restaurado ao desmontar
+      document.body.style.overflow = 'auto';
+    };
+  }, [open]);
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto">
       {/* Fundo escurecido */}
-      <div className="fixed inset-0 bg-gray-900/40 dark:bg-black/80 backdrop-blur-sm transition-opacity" aria-hidden="true" />
+      <div className="fixed inset-0 bg-gray-900/40 dark:bg-black/80 backdrop-blur-sm transition-opacity" aria-hidden="true" onClick={onClose} />
       {/* Blobs decorativos */}
       <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-300 dark:bg-blue-900 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob" />
       <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-indigo-300 dark:bg-indigo-900 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000" />

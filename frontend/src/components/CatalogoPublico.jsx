@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { ShoppingCart, Search, Filter, X } from 'lucide-react';
+import { ShoppingCart, Search, Filter, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import CarrinhoCompras from './CarrinhoCompras';
 import { getApiUrl } from '../config/api';
 
@@ -337,10 +337,28 @@ const CatalogoPublico = () => {
 const ProdutoCard = ({ produto, onAdicionarAoCarrinho }) => {
   const [variacaoSelecionada, setVariacaoSelecionada] = useState(null);
   const [mostrarVariacoes, setMostrarVariacoes] = useState(false);
+  const [imagemAtual, setImagemAtual] = useState(0);
 
   const variacoesComEstoque = produto.variacoes?.filter(
     v => v.estoque?.quantidade > 0
   ) || [];
+
+  const imagens = produto.imagens || [];
+  const temMultiplasImagens = imagens.length > 1;
+
+  const proximaImagem = (e) => {
+    e.stopPropagation();
+    setImagemAtual((prev) => (prev + 1) % imagens.length);
+  };
+
+  const imagemAnterior = (e) => {
+    e.stopPropagation();
+    setImagemAtual((prev) => (prev - 1 + imagens.length) % imagens.length);
+  };
+
+  const irParaImagem = (index) => {
+    setImagemAtual(index);
+  };
 
   const handleAdicionar = () => {
     if (variacoesComEstoque.length === 0) return;
@@ -361,14 +379,63 @@ const ProdutoCard = ({ produto, onAdicionarAoCarrinho }) => {
   return (
     <>
       <div className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow group">
-        {/* Imagem */}
+        {/* Imagem com Carrossel */}
         <div className="relative h-64 bg-gray-100 overflow-hidden">
-          {produto.imagens?.[0] ? (
-            <img
-              src={produto.imagens[0]}
-              alt={produto.nome}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
+          {imagens.length > 0 ? (
+            <>
+              <img
+                src={imagens[imagemAtual]}
+                alt={`${produto.nome} - ${imagemAtual + 1}`}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+              
+              {/* Botões de navegação - aparecem apenas se houver múltiplas imagens */}
+              {temMultiplasImagens && (
+                <>
+                  {/* Botão Anterior */}
+                  <button
+                    onClick={imagemAnterior}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                    aria-label="Imagem anterior"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+
+                  {/* Botão Próximo */}
+                  <button
+                    onClick={proximaImagem}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                    aria-label="Próxima imagem"
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+
+                  {/* Indicadores de página (dots) */}
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                    {imagens.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          irParaImagem(index);
+                        }}
+                        className={`w-2 h-2 rounded-full transition-all ${
+                          index === imagemAtual 
+                            ? 'bg-white w-6' 
+                            : 'bg-white/60 hover:bg-white/80'
+                        }`}
+                        aria-label={`Ir para imagem ${index + 1}`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Contador de imagens */}
+                  <div className="absolute top-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+                    {imagemAtual + 1}/{imagens.length}
+                  </div>
+                </>
+              )}
+            </>
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-400">
               <ShoppingCart size={48} />

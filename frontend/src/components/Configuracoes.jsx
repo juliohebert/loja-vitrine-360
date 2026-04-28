@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FaCog, FaSave, FaUndo, FaCheckCircle, FaTimesCircle, FaUpload, FaTrash, FaStore } from 'react-icons/fa';
 import Sidebar from './Sidebar';
 import Toast from './Toast';
-import { getAuthHeaders } from '../utils/auth';
+import { getAuthHeaders, decodeToken } from '../utils/auth';
 import PlanosDisponiveis from './PlanosDisponiveis';
 import API_URL from '../config/apiUrl';
 
@@ -18,7 +18,8 @@ export default function Configuracoes() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [nomeLoja, setNomeLoja] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
-  const [catalogoLink, setCatalogoLink] = useState(null);
+  const [catalogoLink, setCatalogoLink] = useState({ url: '', slug: '' });
+  const [catalogoCarregado, setCatalogoCarregado] = useState(false);
   const [copiado, setCopiado] = useState(false);
 
   useEffect(() => {
@@ -34,6 +35,23 @@ export default function Configuracoes() {
   }, [navigate]);
 
   const carregarLinkCatalogo = async () => {
+    // Gerar slug localmente a partir do tenant_id (funciona sem backend)
+    const gerarSlugLocal = () => {
+      const token = localStorage.getItem('token');
+      const decoded = token ? decodeToken(token) : null;
+      const tenantId = decoded?.tenantId || '';
+      const slug = tenantId
+        .replace(/^tenant_/, '')
+        .replace(/_\d+$/, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '') || tenantId.replace(/[^a-z0-9]/gi, '').toLowerCase() || 'minha-loja';
+      const url = `${window.location.origin}/catalogo/${slug}`;
+      setCatalogoLink({ slug, url });
+      setCatalogoCarregado(true);
+    };
+
     try {
       const response = await fetch(API_URL + '/api/configurations/catalogo/link', {
         headers: getAuthHeaders()
@@ -41,12 +59,17 @@ export default function Configuracoes() {
 
       if (response.ok) {
         const data = await response.json();
-        if (data.success) {
+        if (data.success && data.data?.url) {
           setCatalogoLink(data.data);
+          setCatalogoCarregado(true);
+          return;
         }
       }
+      // Fallback local se backend indisponível ou sem slug
+      gerarSlugLocal();
     } catch (error) {
       console.error('Erro ao carregar link do catálogo:', error);
+      gerarSlugLocal();
     }
   };
 
@@ -552,7 +575,7 @@ export default function Configuracoes() {
                       </div>
                     </div>
 
-                    {catalogoLink ? (
+                    {catalogoCarregado ? (
                       <div className="space-y-3">
                         {/* URL do Catálogo */}
                         <div className="bg-white rounded-lg p-4 border-2 border-purple-300">

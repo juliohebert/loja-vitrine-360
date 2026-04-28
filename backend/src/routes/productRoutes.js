@@ -119,6 +119,9 @@ const productController = require('../controllers/productController');
  *                   items:
  *                     $ref: '#/components/schemas/Produto'
  */
+router.get('/products/options', productController.getProductOptions);
+router.post('/products/options/:type', productController.addProductOption);
+
 router.post('/products', productController.createProduct);
 router.get('/products', productController.getAllProducts);
 router.put('/products/:id', productController.updateProduct);

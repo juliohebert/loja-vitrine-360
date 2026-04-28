@@ -2,7 +2,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Entrar from './components/Entrar';
 import Registrar from './components/Registrar';
 import EsqueciSenha from './components/EsqueciSenha';
-import CriarProduto from './components/CriarProduto';
+import Onboarding from './components/Onboarding';
+import CriarProduto from './components/CriarProdutoNovo';
 import Dashboard from './components/Dashboard';
 import ControleEstoque from './components/ControleEstoque';
 import PDV from './components/PDV';
@@ -35,6 +36,7 @@ function App() {
         <Route path="/login" element={<Entrar />} />
         <Route path="/register" element={<Registrar />} />
         <Route path="/forgot-password" element={<EsqueciSenha />} />
+        <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/selecionar-loja" element={<SelecionarLoja />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/products" element={<CriarProduto />} />

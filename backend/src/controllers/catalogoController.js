@@ -17,6 +17,7 @@ exports.listarProdutosCatalogo = async (req, res) => {
     } = req.query;
 
     const tenantId = req.headers['x-tenant-id'] || 'default';
+    console.log('🔍 [LISTAR CATALOGO] TenantId:', tenantId);
     
     // Construir filtros
     const where = {
@@ -52,6 +53,8 @@ exports.listarProdutosCatalogo = async (req, res) => {
     // Paginação
     const offset = (parseInt(pagina) - 1) * parseInt(limite);
 
+    console.log('🔍 [LISTAR CATALOGO] Filtros aplicados:', where);
+
     const { count, rows: produtos } = await Product.findAndCountAll({
       where,
       order,
@@ -65,7 +68,8 @@ exports.listarProdutosCatalogo = async (req, res) => {
         'categoria',
         'preco_venda',
         'preco_custo',
-        'imagens'
+        'imagens',
+        'exibir_catalogo'
       ],
       include: [{
         model: Variation,
@@ -93,6 +97,14 @@ exports.listarProdutosCatalogo = async (req, res) => {
         total_estoque: estoqueTotal
       };
     });
+
+    console.log('✅ [LISTAR CATALOGO] Produtos encontrados:', count);
+    console.log('🔍 [LISTAR CATALOGO] Primeiros produtos:', produtos.slice(0, 2).map(p => ({
+      id: p.id,
+      nome: p.nome,
+      exibir_catalogo: p.exibir_catalogo,
+      ativo: p.ativo
+    })));
 
     res.json({
       success: true,
@@ -330,12 +342,19 @@ exports.obterConfiguracoesCatalogo = async (req, res) => {
  * Buscar tenant_id pelo slug
  */
 async function buscarTenantPorSlug(slug) {
+  console.log('🔍 [BUSCAR TENANT POR SLUG] Buscando tenant para slug:', slug);
+  
   const config = await Configuration.findOne({
     where: {
       chave: 'slug_catalogo',
       slug_catalogo: slug
     }
   });
+
+  console.log('🔍 [BUSCAR TENANT POR SLUG] Configuração encontrada:', config ? {
+    tenant_id: config.tenant_id,
+    slug_catalogo: config.slug_catalogo
+  } : 'null');
 
   if (!config) {
     return null;

@@ -229,4 +229,43 @@ router.post('/logo/upload', authMiddleware, upload.single('logo'), configuration
  */
 router.delete('/logo/delete', authMiddleware, configurationController.deleteLogo);
 
+/**
+ * @swagger
+ * /api/configurations/onboarding:
+ *   post:
+ *     summary: Salvar configurações do onboarding
+ *     tags: [Configurações]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nomeLoja:
+ *                 type: string
+ *                 description: Nome da loja
+ *               estiloPDV:
+ *                 type: string
+ *                 enum: [branded, shortcuts]
+ *                 description: Estilo do PDV
+ *               produtos:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     price:
+ *                       type: number
+ *     responses:
+ *       200:
+ *         description: Configurações salvas com sucesso
+ *       500:
+ *         description: Erro ao salvar configurações
+ */
+router.post('/onboarding', authMiddleware, configurationController.saveOnboardingConfig);
+
 module.exports = router;

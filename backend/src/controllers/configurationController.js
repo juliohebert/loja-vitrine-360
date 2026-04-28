@@ -359,35 +359,54 @@ exports.getCatalogoLink = async (req, res) => {
       }
     });
 
-    if (!config || !config.slug_catalogo) {
-      return res.status(404).json({
-        success: false,
-        message: 'Slug do catálogo não encontrado. Execute a migration para gerar.'
+    // Gerar slug automaticamente se ainda não existir
+    let slug;
+    if (!config || !config.valor) {
+      // Criar slug baseado no tenant_id
+      slug = req.tenantId
+        .replace(/^tenant_/, '')
+        .replace(/_\d+$/, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+
+      if (!slug) slug = req.tenantId.replace(/[^a-z0-9]/gi, '').toLowerCase();
+
+      await Configuration.findOrCreate({
+        where: { chave: 'slug_catalogo', tenant_id: req.tenantId },
+        defaults: {
+          chave: 'slug_catalogo',
+          valor: slug,
+          slug_catalogo: slug, // IMPORTANTE: Precisa setar esta coluna também
+          tipo: 'texto',
+          descricao: 'Slug único do catálogo público',
+          tenant_id: req.tenantId
+        }
       });
+    } else {
+      slug = config.valor;
     }
 
     // Gerar URL completa do catálogo
-    // Usar origin do frontend se vier do header, senão construir baseado na requisição
     const origin = req.get('origin') || req.get('referer');
     let catalogoUrl;
     
     if (origin) {
-      // Extrair o host do origin/referer (ex: http://localhost:3002)
-      const frontendUrl = origin.replace(/\/$/, ''); // Remove trailing slash
-      catalogoUrl = `${frontendUrl}/catalogo/${config.slug_catalogo}`;
+      const frontendUrl = origin.replace(/\/$/, '');
+      catalogoUrl = `${frontendUrl}/catalogo/${slug}`;
     } else {
-      // Fallback: usar protocolo e host da requisição
       const protocol = req.protocol;
       const host = req.get('host');
-      catalogoUrl = `${protocol}://${host}/catalogo/${config.slug_catalogo}`;
+      catalogoUrl = `${protocol}://${host}/catalogo/${slug}`;
     }
 
     res.status(200).json({
       success: true,
       data: {
-        slug: config.slug_catalogo,
+        slug,
         url: catalogoUrl,
-        urlRelativa: `/catalogo/${config.slug_catalogo}`
+        urlRelativa: `/catalogo/${slug}`
       }
     });
   } catch (error) {
@@ -400,3 +419,88 @@ exports.getCatalogoLink = async (req, res) => {
   }
 };
 
+/**
+ * Salvar configurações do onboarding
+ */
+exports.saveOnboardingConfig = async (req, res) => {
+  try {
+    const { nomeLoja, estiloPDV, produtos } = req.body;
+    const { Product } = require('../models/Schema');
+
+    // Salvar nome da loja
+    if (nomeLoja) {
+      const [config, created] = await Configuration.findOrCreate({
+        where: { chave: 'nome_loja', tenant_id: req.tenantId },
+        defaults: {
+          chave: 'nome_loja',
+          valor: nomeLoja,
+          tipo: 'texto',
+          descricao: 'Nome da loja',
+          tenant_id: req.tenantId
+        }
+      });
+      if (!created) {
+        await config.update({ valor: nomeLoja });
+      }
+    }
+
+    // Salvar estilo do PDV
+    if (estiloPDV) {
+      const [config, created] = await Configuration.findOrCreate({
+        where: { chave: 'estilo_pdv', tenant_id: req.tenantId },
+        defaults: {
+          chave: 'estilo_pdv',
+          valor: estiloPDV,
+          tipo: 'texto',
+          descricao: 'Estilo do PDV (branded ou shortcuts)',
+          tenant_id: req.tenantId
+        }
+      });
+      if (!created) {
+        await config.update({ valor: estiloPDV });
+      }
+    }
+
+    // Criar produtos iniciais
+    if (produtos && Array.isArray(produtos) && produtos.length > 0) {
+      for (const produto of produtos) {
+        if (produto.name && produto.name.trim() !== '') {
+          await Product.create({
+            nome: produto.name,
+            preco: parseFloat(produto.price) || 0,
+            quantidade: 0,
+            categoria: 'Geral',
+            tenant_id: req.tenantId
+          });
+        }
+      }
+    }
+
+    // Marcar onboarding como concluído
+    const [config, created] = await Configuration.findOrCreate({
+      where: { chave: 'onboarding_concluido', tenant_id: req.tenantId },
+      defaults: {
+        chave: 'onboarding_concluido',
+        valor: 'true',
+        tipo: 'booleano',
+        descricao: 'Indica se o onboarding foi concluído',
+        tenant_id: req.tenantId
+      }
+    });
+    if (!created) {
+      await config.update({ valor: 'true' });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Configurações do onboarding salvas com sucesso'
+    });
+  } catch (error) {
+    console.error('Erro ao salvar configurações do onboarding:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao salvar configurações do onboarding',
+      error: error.message
+    });
+  }
+};

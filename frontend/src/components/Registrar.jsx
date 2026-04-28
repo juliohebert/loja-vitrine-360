@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Lock, Eye, EyeOff, Layers } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Layers } from 'lucide-react';
 import ModalCadastroSucesso from './ModalCadastroSucesso';
 
 /**
@@ -11,53 +11,21 @@ import ModalCadastroSucesso from './ModalCadastroSucesso';
 export default function Register() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    name: '',
     email: '',
     password: '',
-    confirmPassword: '',
-    nomeLoja: '',
-    cnpj: '',
-    telefone: '',
-    endereco: '',
-    responsavel: '',
-    plano: '' // removido do formulário, mas mantido no estado para compatibilidade futura
+    confirmPassword: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const [successMessage, setSuccessMessage] = useState('');
   const [showModal, setShowModal] = useState(false);
-
-
-  // Máscara para CNPJ
-  const formatCNPJ = (value) => {
-    return value
-      .replace(/\D/g, '')
-      .replace(/(\d{2})(\d)/, '$1.$2')
-      .replace(/(\d{3})(\d)/, '$1.$2')
-      .replace(/(\d{3})(\d)/, '$1/$2')
-      .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
-      .slice(0, 18);
-  };
-
-  // Máscara para telefone
-  const formatPhone = (value) => {
-    return value
-      .replace(/\D/g, '')
-      .replace(/(\d{2})(\d)/, '($1) $2')
-      .replace(/(\d{5})(\d)/, '$1-$2')
-      .slice(0, 15);
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    let formattedValue = value;
-    if (name === 'cnpj') formattedValue = formatCNPJ(value);
-    if (name === 'telefone') formattedValue = formatPhone(value);
     setFormData(prev => ({
       ...prev,
-      [name]: formattedValue
+      [name]: value
     }));
     // Limpar erro do campo ao digitar
     if (errors[name]) {
@@ -68,28 +36,6 @@ export default function Register() {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.nomeLoja.trim()) {
-      newErrors.nomeLoja = 'Nome da loja é obrigatório';
-    }
-    if (!formData.name.trim()) {
-      newErrors.name = 'Nome completo é obrigatório';
-    }
-    if (!formData.cnpj.trim()) {
-      newErrors.cnpj = 'CNPJ é obrigatório';
-    } else if (!/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/.test(formData.cnpj)) {
-      newErrors.cnpj = 'CNPJ inválido (formato: 00.000.000/0000-00)';
-    }
-    if (!formData.telefone.trim()) {
-      newErrors.telefone = 'Telefone é obrigatório';
-    } else if (!/^\(\d{2}\) \d{5}-\d{4}$/.test(formData.telefone)) {
-      newErrors.telefone = 'Telefone inválido (formato: (99) 99999-9999)';
-    }
-    if (!formData.endereco.trim()) {
-      newErrors.endereco = 'Endereço é obrigatório';
-    }
-    if (!formData.responsavel.trim()) {
-      newErrors.responsavel = 'Responsável é obrigatório';
-    }
     if (!formData.email.trim()) {
       newErrors.email = 'E-mail é obrigatório';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -117,7 +63,6 @@ export default function Register() {
     }
 
     setLoading(true);
-    setSuccessMessage('');
 
     try {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -127,32 +72,40 @@ export default function Register() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          nomeLoja: formData.nomeLoja,
+          nomeLoja: 'Minha Loja', // Nome temporário, será atualizado no onboarding
           email: formData.email,
-          senha: formData.password,
-          cnpj: formData.cnpj,
-          telefone: formData.telefone,
-          endereco: formData.endereco,
-          responsavel: formData.responsavel
+          senha: formData.password
         })
       });
 
       const data = await response.json();
 
       if (response.ok) {
+        // Fazer login automático após registro
+        const loginResponse = await fetch(`${API_URL}/api/users/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: formData.email,
+            senha: formData.password
+          })
+        });
+
+        const loginData = await loginResponse.json();
+
+        if (loginResponse.ok && loginData.token) {
+          // Salvar token para usar no onboarding
+          localStorage.setItem('token', loginData.token);
+          localStorage.setItem('user', JSON.stringify(loginData.user));
+        }
 
         // Limpar formulário
         setFormData({
-          name: '',
           email: '',
           password: '',
-          confirmPassword: '',
-          nomeLoja: '',
-          cnpj: '',
-          telefone: '',
-          endereco: '',
-          responsavel: '',
-          plano: ''
+          confirmPassword: ''
         });
 
         setShowModal(true);
@@ -170,9 +123,9 @@ export default function Register() {
 
   return (
     <>
-      <ModalCadastroSucesso open={showModal} onClose={() => navigate('/login')} />
-      <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-background-light dark:bg-background-dark px-4 py-8">
-        <div className="w-full max-w-md">
+      <ModalCadastroSucesso open={showModal} onClose={() => navigate('/onboarding')} />
+      <div className="w-full min-h-screen bg-background-light dark:bg-background-dark px-4 py-12 pb-24">
+        <div className="w-full max-w-md mx-auto">
           
           {/* Header */}
           <div className="flex flex-col items-center justify-center mb-8">
@@ -182,13 +135,10 @@ export default function Register() {
             <h1 className="text-[#111318] dark:text-white text-3xl font-bold tracking-tight">
               Crie sua Conta
             </h1>
-            <p className="text-[#616f89] dark:text-gray-400 mt-2 text-base text-center">
-              Preencha os campos abaixo para começar.
+            <p className="text-[#616f89] dark:text-gray-400 mt-2 text-base text-center font-normal">
+              Comece agora e aproveite <span className="text-primary font-semibold">14 dias grátis</span>
             </p>
           </div>
-
-          {/* Success Message */}
-          {/* Mensagem agora é exibida via modal, não mais na tela */}
 
           {/* General Error */}
           {errors.general && (
@@ -198,121 +148,8 @@ export default function Register() {
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 font-normal">
             
-            {/* Nome da Loja */}
-            <label className="flex flex-col">
-              <p className="text-[#111318] dark:text-gray-300 text-base font-medium leading-normal pb-2">
-                Nome da Loja
-              </p>
-              <input
-                className={`w-full rounded-lg border ${errors.nomeLoja ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-background-dark/50 focus:outline-0 focus:ring-2 focus:ring-primary/50 focus:border-primary h-14 px-4 text-base text-[#111318] dark:text-white placeholder:text-[#616f89] dark:placeholder:text-gray-400 transition-colors`}
-                name="nomeLoja"
-                placeholder="Digite o nome da loja"
-                type="text"
-                value={formData.nomeLoja}
-                onChange={handleChange}
-              />
-              {errors.nomeLoja && (
-                <p className="text-red-600 dark:text-red-400 text-sm mt-1">{errors.nomeLoja}</p>
-              )}
-            </label>
-
-            {/* Nome Completo */}
-            <label className="flex flex-col">
-              <p className="text-[#111318] dark:text-gray-300 text-base font-medium leading-normal pb-2">
-                Nome Completo
-              </p>
-              <div className="relative flex w-full items-center">
-                <User className="absolute left-3.5 text-[#616f89] dark:text-gray-400" size={20} />
-                <input
-                  className={`w-full rounded-lg border ${errors.name ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-background-dark/50 focus:outline-0 focus:ring-2 focus:ring-primary/50 focus:border-primary h-14 pl-11 pr-4 text-base text-[#111318] dark:text-white placeholder:text-[#616f89] dark:placeholder:text-gray-400 transition-colors`}
-                  name="name"
-                  placeholder="Digite seu nome completo"
-                  type="text"
-                  value={formData.name}
-                  onChange={handleChange}
-                />
-              </div>
-              {errors.name && (
-                <p className="text-red-600 dark:text-red-400 text-sm mt-1">{errors.name}</p>
-              )}
-            </label>
-
-            {/* CNPJ */}
-            <label className="flex flex-col">
-              <p className="text-[#111318] dark:text-gray-300 text-base font-medium leading-normal pb-2">
-                CNPJ
-              </p>
-              <input
-                className={`w-full rounded-lg border ${errors.cnpj ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-background-dark/50 focus:outline-0 focus:ring-2 focus:ring-primary/50 focus:border-primary h-14 px-4 text-base text-[#111318] dark:text-white placeholder:text-[#616f89] dark:placeholder:text-gray-400 transition-colors`}
-                name="cnpj"
-                placeholder="Digite o CNPJ da loja"
-                type="text"
-                value={formData.cnpj}
-                onChange={handleChange}
-              />
-              {errors.cnpj && (
-                <p className="text-red-600 dark:text-red-400 text-sm mt-1">{errors.cnpj}</p>
-              )}
-            </label>
-
-            {/* Telefone */}
-            <label className="flex flex-col">
-              <p className="text-[#111318] dark:text-gray-300 text-base font-medium leading-normal pb-2">
-                Telefone
-              </p>
-              <input
-                className={`w-full rounded-lg border ${errors.telefone ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-background-dark/50 focus:outline-0 focus:ring-2 focus:ring-primary/50 focus:border-primary h-14 px-4 text-base text-[#111318] dark:text-white placeholder:text-[#616f89] dark:placeholder:text-gray-400 transition-colors`}
-                name="telefone"
-                placeholder="Digite o telefone da loja"
-                type="text"
-                value={formData.telefone}
-                onChange={handleChange}
-              />
-              {errors.telefone && (
-                <p className="text-red-600 dark:text-red-400 text-sm mt-1">{errors.telefone}</p>
-              )}
-            </label>
-
-            {/* Endereço */}
-            <label className="flex flex-col">
-              <p className="text-[#111318] dark:text-gray-300 text-base font-medium leading-normal pb-2">
-                Endereço
-              </p>
-              <input
-                className={`w-full rounded-lg border ${errors.endereco ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-background-dark/50 focus:outline-0 focus:ring-2 focus:ring-primary/50 focus:border-primary h-14 px-4 text-base text-[#111318] dark:text-white placeholder:text-[#616f89] dark:placeholder:text-gray-400 transition-colors`}
-                name="endereco"
-                placeholder="Digite o endereço da loja"
-                type="text"
-                value={formData.endereco}
-                onChange={handleChange}
-              />
-              {errors.endereco && (
-                <p className="text-red-600 dark:text-red-400 text-sm mt-1">{errors.endereco}</p>
-              )}
-            </label>
-
-            {/* Responsável */}
-            <label className="flex flex-col">
-              <p className="text-[#111318] dark:text-gray-300 text-base font-medium leading-normal pb-2">
-                Responsável
-              </p>
-              <input
-                className={`w-full rounded-lg border ${errors.responsavel ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-background-dark/50 focus:outline-0 focus:ring-2 focus:ring-primary/50 focus:border-primary h-14 px-4 text-base text-[#111318] dark:text-white placeholder:text-[#616f89] dark:placeholder:text-gray-400 transition-colors`}
-                name="responsavel"
-                placeholder="Nome do responsável pela loja"
-                type="text"
-                value={formData.responsavel}
-                onChange={handleChange}
-              />
-              {errors.responsavel && (
-                <p className="text-red-600 dark:text-red-400 text-sm mt-1">{errors.responsavel}</p>
-              )}
-            </label>
-
-
-
             {/* E-mail */}
             <label className="flex flex-col">
               <p className="text-[#111318] dark:text-gray-300 text-base font-medium leading-normal pb-2">
@@ -327,6 +164,7 @@ export default function Register() {
                   type="email"
                   value={formData.email}
                   onChange={handleChange}
+                  autoFocus
                 />
               </div>
               {errors.email && (
@@ -411,7 +249,7 @@ export default function Register() {
 
           {/* Login Link */}
           <div className="mt-6 text-center">
-            <p className="text-sm text-[#616f89] dark:text-gray-400">
+            <p className="text-sm text-[#616f89] dark:text-gray-400 font-normal">
               Já tem uma conta?{' '}
               <a 
                 className="font-semibold text-primary dark:text-primary hover:underline transition-colors cursor-pointer" 

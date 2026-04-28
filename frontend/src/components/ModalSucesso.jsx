@@ -1,7 +1,7 @@
 import React from 'react';
 import Modal from './Modal';
 
-const ModalSucesso = ({ isOpen, onClose, titulo, mensagem, textoBotao = 'OK' }) => {
+const ModalSucesso = ({ isOpen, onClose, titulo, mensagem, textoBotao = 'OK', acoes }) => {
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <div className="flex flex-col items-center justify-center p-8 text-center sm:p-10">
@@ -34,13 +34,31 @@ const ModalSucesso = ({ isOpen, onClose, titulo, mensagem, textoBotao = 'OK' }) 
           )}
         </div>
 
-        {/* Botão */}
-        <button 
-          onClick={onClose}
-          className="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-green-600 text-white text-base font-bold leading-normal tracking-wide transition-all hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 active:scale-95"
-        >
-          <span className="truncate">{textoBotao}</span>
-        </button>
+        {/* Botões de ação */}
+        {acoes && acoes.length > 0 ? (
+          <div className="flex flex-col sm:flex-row gap-3 w-full">
+            {acoes.map((acao, index) => (
+              <button 
+                key={index}
+                onClick={acao.onClick}
+                className={`flex flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 text-base font-bold leading-normal tracking-wide transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-95 ${
+                  acao.primary 
+                    ? 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500' 
+                    : 'bg-slate-200 text-slate-700 hover:bg-slate-300 focus:ring-slate-400'
+                }`}
+              >
+                <span className="truncate">{acao.label}</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <button 
+            onClick={onClose}
+            className="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-green-600 text-white text-base font-bold leading-normal tracking-wide transition-all hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 active:scale-95"
+          >
+            <span className="truncate">{textoBotao}</span>
+          </button>
+        )}
       </div>
     </Modal>
   );

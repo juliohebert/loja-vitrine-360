@@ -293,7 +293,7 @@ const Sidebar = () => {
       <div className={`
         fixed lg:static
         top-0 left-0
-        w-64 bg-white border-r border-gray-200 
+        w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700
         flex flex-col h-screen
         z-[50]
         transition-transform duration-300 ease-in-out
@@ -331,7 +331,7 @@ const Sidebar = () => {
               >
                 <path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z"/>
               </svg>
-              <h1 className="text-gray-800 text-lg font-bold">
+              <h1 className="text-gray-800 dark:text-white text-lg font-bold">
                 {nomeLoja || 'ModaStore'}
               </h1>
             </>
@@ -361,7 +361,7 @@ const Sidebar = () => {
                   className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
                     isActive(item.path)
                       ? 'bg-primary/10 text-primary'
-                      : 'text-gray-600 hover:bg-gray-100'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 >
                   {item.icon}
@@ -375,16 +375,16 @@ const Sidebar = () => {
 
       {/* Footer da Sidebar - Usuário, Trocar de Loja e Sair */}
       <div className="flex-shrink-0 p-4">
-        <div className="flex flex-col gap-2 border-t border-gray-200 pt-4">
+        <div className="flex flex-col gap-2 border-t border-gray-200 dark:border-gray-700 pt-4">
         <div className="flex items-center gap-3 px-3 py-2">
           <div className="bg-primary rounded-full w-10 h-10 flex items-center justify-center text-white font-semibold">
             {usuario?.nome ? usuario.nome.charAt(0).toUpperCase() : 'U'}
           </div>
           <div className="flex-1 flex flex-col">
-            <h1 className="text-gray-800 text-base font-medium leading-normal">
+            <h1 className="text-gray-800 dark:text-white text-base font-medium leading-normal">
               {usuario?.nome || 'Usuário'}
             </h1>
-            <p className="text-gray-500 text-sm font-normal leading-normal">
+            <p className="text-gray-500 dark:text-gray-400 text-sm font-normal leading-normal">
               {usuario?.funcao === 'super-admin' 
                 ? 'Super Admin' 
                 : usuario?.funcao === 'admin' 
@@ -398,7 +398,7 @@ const Sidebar = () => {
           </div>
           <button 
             onClick={handleLogout}
-            className="text-gray-600 hover:text-red-600 transition-colors"
+            className="text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-500 transition-colors"
             title="Sair"
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -411,7 +411,7 @@ const Sidebar = () => {
             navigate('/selecionar-loja');
             setIsMobileMenuOpen(false);
           }}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-600 hover:text-primary hover:bg-gray-100 transition-colors"
+          className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           title="Trocar de Loja"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">

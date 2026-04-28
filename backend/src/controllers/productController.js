@@ -1,4 +1,87 @@
-const { Product, Variation, Stock, sequelize } = require('../models/Schema');
+const { Product, Variation, Stock, Configuration, sequelize } = require('../models/Schema');
+
+const DEFAULT_OPTIONS = {
+  categories: ['Geral', 'Camisetas', 'Calças', 'Bermudas', 'Shorts', 'Vestidos', 'Saias', 'Blusas', 'Jaquetas', 'Casacos', 'Calçados', 'Acessórios'],
+  subcategories: ['Feminino', 'Masculino', 'Infantil', 'Adulto', 'Casual', 'Esportivo', 'Social', 'Praia'],
+  brands: []
+};
+
+/**
+ * Retorna opções dinâmicas: categorias, subcategorias, marcas
+ * @route GET /api/products/options
+ */
+exports.getProductOptions = async (req, res) => {
+  try {
+    const configs = await Configuration.findAll({
+      where: {
+        chave: ['product_categories', 'product_brands', 'product_subcategories'],
+        tenant_id: req.tenantId
+      }
+    });
+
+    const parse = (chave, defaultVal) => {
+      const c = configs.find(x => x.chave === chave);
+      try { return c ? JSON.parse(c.valor) : defaultVal; } catch { return defaultVal; }
+    };
+
+    res.json({
+      categories: parse('product_categories', DEFAULT_OPTIONS.categories),
+      subcategories: parse('product_subcategories', DEFAULT_OPTIONS.subcategories),
+      brands: parse('product_brands', DEFAULT_OPTIONS.brands)
+    });
+  } catch (error) {
+    console.error('Erro ao buscar opções:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Adiciona novo item a categorias, subcategorias ou marcas
+ * @route POST /api/products/options/:type  (type: categories | subcategories | brands)
+ */
+exports.addProductOption = async (req, res) => {
+  try {
+    const { type } = req.params;
+    const { value } = req.body;
+
+    const validTypes = ['categories', 'subcategories', 'brands'];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({ error: 'Tipo inválido' });
+    }
+    if (!value || !value.trim()) {
+      return res.status(400).json({ error: 'Valor é obrigatório' });
+    }
+
+    const chave = `product_${type}`;
+    const defaultList = DEFAULT_OPTIONS[type];
+
+    const [config] = await Configuration.findOrCreate({
+      where: { chave, tenant_id: req.tenantId },
+      defaults: {
+        chave,
+        valor: JSON.stringify(defaultList),
+        tipo: 'json',
+        tenant_id: req.tenantId
+      }
+    });
+
+    let currentList;
+    try { currentList = JSON.parse(config.valor || '[]'); } catch { currentList = [...defaultList]; }
+
+    const trimmed = value.trim();
+    if (currentList.map(i => i.toLowerCase()).includes(trimmed.toLowerCase())) {
+      return res.status(400).json({ error: 'Item já existe' });
+    }
+
+    currentList.push(trimmed);
+    await config.update({ valor: JSON.stringify(currentList) });
+
+    res.json({ success: true, list: currentList });
+  } catch (error) {
+    console.error('Erro ao adicionar opção:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
 
 /**
  * 🎯 OBJECTIVE: Create a controller function to create a Product with Variations and Stock.
@@ -15,11 +98,19 @@ exports.createProduct = async (req, res) => {
   try {
     const { nome, descricao, marca, categoria, precoCusto, precoVenda, variacoes, imagens, exibir_catalogo } = req.body;
 
+    console.log('🔵 [CREATE PRODUCT] Dados recebidos:', {
+      nome,
+      marca,
+      exibir_catalogo,
+      exibir_catalogo_tipo: typeof exibir_catalogo,
+      body_completo: req.body
+    });
+
     // Validações básicas
-    if (!nome || !marca || !precoCusto || !precoVenda) {
+    if (!nome || !marca || !precoVenda) {
       await t.rollback();
       return res.status(400).json({ 
-        error: 'Campos obrigatórios: nome, marca, precoCusto, precoVenda' 
+        error: 'Campos obrigatórios: nome, marca, precoVenda' 
       });
     }
 
@@ -31,17 +122,22 @@ exports.createProduct = async (req, res) => {
     }
 
     // 1. Create the parent Product
+    const exibirCatalogoValue = exibir_catalogo === true || exibir_catalogo === 'true';
+    console.log('🟢 [CREATE PRODUCT] Valor final de exibir_catalogo:', exibirCatalogoValue);
+
     const product = await Product.create({
       nome,
       descricao,
       marca,
       categoria: categoria || 'Geral',
-      precoCusto: parseFloat(precoCusto),
+      precoCusto: parseFloat(precoCusto) || 0,
       precoVenda: parseFloat(precoVenda),
       imagens: imagens || [],
-      exibir_catalogo: exibir_catalogo === true || exibir_catalogo === 'true',
+      exibir_catalogo: exibirCatalogoValue,
       tenant_id: req.tenantId // Associar ao tenant
     }, { transaction: t });
+
+    console.log('✅ [CREATE PRODUCT] Produto criado com exibir_catalogo:', product.exibir_catalogo);
 
     // 2. Iterate over 'variacoes' array and create Variation + Stock
     const variationsCreated = [];
@@ -318,10 +414,10 @@ exports.updateProduct = async (req, res) => {
     }
 
     // Validações básicas
-    if (!nome || !marca || !precoCusto || !precoVenda) {
+    if (!nome || !marca || !precoVenda) {
       await t.rollback();
       return res.status(400).json({ 
-        error: 'Campos obrigatórios: nome, marca, precoCusto, precoVenda' 
+        error: 'Campos obrigatórios: nome, marca, precoVenda' 
       });
     }
 
@@ -333,16 +429,27 @@ exports.updateProduct = async (req, res) => {
     }
 
     // Atualizar dados do produto
+    const exibirCatalogoValue = exibir_catalogo === true || exibir_catalogo === 'true';
+    console.log('🔵 [UPDATE PRODUCT] Dados recebidos:', {
+      nome,
+      marca,
+      exibir_catalogo,
+      exibir_catalogo_tipo: typeof exibir_catalogo,
+      exibirCatalogoValue
+    });
+
     await product.update({
       nome,
       descricao,
       marca,
       categoria: categoria || 'Geral',
-      precoCusto: parseFloat(precoCusto),
+      precoCusto: parseFloat(precoCusto) || 0,
       precoVenda: parseFloat(precoVenda),
       imagens: imagens || [],
-      exibir_catalogo: exibir_catalogo === true || exibir_catalogo === 'true'
+      exibir_catalogo: exibirCatalogoValue
     }, { transaction: t });
+
+    console.log('✅ [UPDATE PRODUCT] Produto atualizado com exibir_catalogo:', product.exibir_catalogo);
 
     // Deletar variações antigas
     await Variation.destroy({
